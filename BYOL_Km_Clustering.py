@@ -21,7 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ################################ wandb.login()
 
 # test model, a resnet 50
-resnet = models.resnet18(pretrained=False)
+resnet = models.googlenet(pretrained=True)     #pretrained = false even also resulted 0.2 silhoutte and loss to upto 0.49
 
 
 # Freeze all layers except the last one
@@ -51,17 +51,20 @@ args = parser.parse_args()
 
 # constants
 
-BATCH_SIZE = 192
-EPOCHS     = 50 
-LR         = 5e-5
+BATCH_SIZE = 96
+EPOCHS     = 25
+LR         = 6e-2
 NUM_GPUS   = 2
 IMAGE_SIZE = 512 # change from 256 to 512
 IMAGE_EXTS = ['.jpg', '.png', '.jpeg','.tif']
 NUM_WORKERS = 2  #multiprocessing.cpu_count
 n_label = 4
 NUM_Clust = 8
+exp_name = "14thApr_1125"
 
 img_paths = glob.glob('/workspace/Data/solo_train_copy/*/*.tif')
+print(f'Number of images: {len(img_paths)}')
+
 print(f'Number of images: {len(img_paths)}')
 
 # pytorch lightning module
@@ -71,7 +74,7 @@ class SelfSupervisedLearner(pl.LightningModule):
         super().__init__()
         self.learner = BYOL(net, **kwargs)
         # wandb.log({'Learner':self.learner})
-        
+
     def forward(self, images):
         # print(f"learning parameters is {self.learner(images)}")
         return self.learner(images)
@@ -82,8 +85,8 @@ class SelfSupervisedLearner(pl.LightningModule):
         # wandb.log({'Loss': loss})
         return {'loss': loss}
 
-        
-        
+
+
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=LR)
 
@@ -100,8 +103,8 @@ class SelfSupervisedLearner(pl.LightningModule):
 # images dataset
 
 
-def expand_greyscale(t):
-    return t.expand(3, -1, -1)
+# def expand_greyscale(t):
+#     return t.expand(3, -1, -1)
 
 class ImagesDataset(Dataset):
     def __init__(self, folder, image_size):
@@ -114,14 +117,14 @@ class ImagesDataset(Dataset):
             _, ext = os.path.splitext(path)
             if ext.lower() in IMAGE_EXTS:
                 self.paths.append(path)
-            
+
      ######################################################   print(f'{len(self.paths)} images found')
 
         self.transform = transforms.Compose([
             transforms.Resize(image_size),
             transforms.CenterCrop(image_size),
             transforms.ToTensor(),
-            transforms.Lambda(expand_greyscale)
+            # transforms.Lambda(expand_greyscale)
         ])
 
     def __len__(self):
@@ -180,39 +183,18 @@ if __name__ == '__main__':
 
 
     trainer.fit(model, train_loader)
-    
-        #################################################### # loop over the epochs
-        ##################for epoch in range(EPOCHS):
-        # loop over the batches in the epoch
-        ###################for step, (inputs, targets) in enumerate(train_loader):
-            # train the model on the batch
-            # ...
-
-            # log the training loss at the end of each epoch
-            #####################if step == len(train_loader) - 1:
-                # train_loss = loss  # compute the training loss
-               ############################## # wandb.log({"train_loss": loss, "epoch": epoch})
-
-        # evaluate the model on the validation set
-        # ...
-
-        # log the validation loss and accuracy at the end of each epoch
-        # wandb.log({"val_loss": val_loss, "val_acc": val_acc, "epoch": epoch})
-
-    ############################################################################
-    
     print("Traing has been completed.")
-    #img_list = glob.glob()
+    
     img_features = []
     ds_c = ImagesDataset(args.image_folder, IMAGE_SIZE)
     img_loader = DataLoader(ds_c, batch_size=32, num_workers=2, shuffle=False)
+    
+    
     # torch.set_grad_enabled(False)
     resnet.eval()
-
     for img in img_loader:
-      ################################################  print(img.size())  #32 3 512 512
+        #print(img.size())
         output = resnet(img)
-       ###################################### print(f'print o/p image size {output.size()}')  # 32 512 1  1
         img_feature = output.detach()
         img_feature =torch.squeeze(img_feature)
         img_feature = img_feature.numpy()
@@ -228,52 +210,69 @@ if __name__ == '__main__':
         for idx in range(image_feature_norm.shape[0]):
             img_features.append(image_feature_norm[idx,:])
     print(len(img_features))
-    # Choose the number of clusters
-    num_clusters = NUM_Clust
-    print(f"The number of cluster is: {NUM_Clust}")
-    
-    
-    # Run K-means algorithm
-    kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(img_features)
-    
-    # Evaluate the clusters
-    wcss = kmeans.inertia_
-    print("Within-cluster sum of squares:", wcss)
-    
-    # Visualize the clusters
-    labels = kmeans.labels_
-    centroids = kmeans.cluster_centers_
-    print(f'label is {labels}')
-    print(f'centroid is {centroids}')  
-    
-    # # Print the cluster labels for each image
-    # for i, label in enumerate(kmeans.labels_):
-    #     print(f"{img_paths[i]}: {label}")
-    
-    
-    #     #get cluster label and centroids
-    #     labels = kmeans.labels_
-    #     centroids = kmeans.cluster_centers_
-    
-    # Evaluate the algorithm using the silhouette score
-    silhouette_avg = silhouette_score(img_features, labels)
-    print("The average silhouette score is :", silhouette_avg)
 
     
 
+    
+        # Normalize the data over the batch
+        image_feature_norm = (img_feature-np.min(img_feature))/ (np.max(img_feature)-np.min(img_feature))
 
-# #     train_acc = 0
-# #     acc_list = []
-     
-# #     # training
-# #     for epoch in range(1, EPOCHS):
-# #         print(f"Epoch: {EPOCHS} in progress...")
-# #     #     # train models
-# #         # train_acc= resnet.train(train_loader, EPOCHS)
-# #         print(f'train_accuracy is : {train_acc} and train_loss is {train_loss}')
-# # # with wandb.init().run:
-# #   # Train model
-# #   wandb.save('model.pt')
+        #########print(f'The length of the img_features l
+        ######## print(f'The shape of the output from the model is: {img_feature.size()}') # 32 512
+        # img_feature = np.concatenate(img_feature, axis=0)
+        # print(f'The shape of the output after normalisation: {image_feature_norm.shape}') # 32 512
+
+        for idx in range(image_feature_norm.shape[0]):
+            img_features.append(image_feature_norm[idx,:])
+ 
+    
+    print(len(img_features))
+
+    silhouette_list = []
+    wcss_list = []
+    labels_list = []
+    centroids_list = []
+
+    for NUM_Clust in range(9):
+
+        # Choose the number of clusters
+        num_clusters = NUM_Clust+2
+        print(f"The number of cluster is: {NUM_Clust}")
+
+
+        # Run K-means algorithm
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(img_features)
+
+        # Evaluate the clusters
+        wcss = kmeans.inertia_
+        wcss_list.append(wcss)
+        print(f"Within-cluster sum of squares is {wcss} for {num_clusters} clusters")
+
+        # Visualize the clusters
+        labels = kmeans.labels_
+        centroids = kmeans.cluster_centers_
+        labels_list.append(labels)
+        centroids_list.append(centroids)
+        #print(f'label is {labels}')
+        #print(f'centroid is {centroids}')  
+
+        # Evaluate the algorithm using the silhouette score
+        silhouette_avg = silhouette_score(img_features, labels)
+        silhouette_list.append(silhouette_avg)
+        print(f"The average silhouette score is {silhouette_avg} for {num_clusters} clusters")
+
+    #save centroids and labels
+    result_path = "/workspace/byol_results/"
+
+    np.save(os.path.join(result_path+"_"+(exp_name+"_centroids_list")), centroids_list)
+    np.save(os.path.join(result_path+"_"+(exp_name+"_labels_list")), labels_list)
+    np.save(os.path.join(result_path+"_"+(exp_name+"_wcss_list")), wcss_list)
+    np.save(os.path.join(result_path+"_"+(exp_name+"_silhouette_list")), silhouette_list)
+
+
+
+torch.save(exp_name, PATH='/workspace/')
+
 
 # ##### To Do ###########
 
@@ -282,5 +281,3 @@ if __name__ == '__main__':
 ##k means clustering k = no of label (keep it a argument)
 
 ##then check the purity score or get the voting by the label available
-
-

@@ -51,6 +51,35 @@ with open(config_json, 'w') as f:
     json.dump(config, f)
 
 
+
+print(f'The configuration file for the experiment named {config["exp_name"]} has been saved.')
+# loading the constants from config file
+
+Random_SEED = config["Random_SEED"]
+BATCH_SIZE = config["BATCH_SIZE"]
+EPOCHS     = config["EPOCHS"]
+LR         = config["LR"]
+NUM_GPUS   = config["NUM_GPUS"]
+IMAGE_SIZE = config["IMAGE_SIZE"]   # change from 256 to 512
+IMAGE_EXTS = ['.jpg', '.png', '.jpeg','.tif']
+
+NUM_WORKERS = config["NUM_WORKERS"] #multiprocessing.cpu_count
+n_label = config["n_label"]
+NUM_Clust = config["NUM_clust"]
+exp_name = config["exp_name"]
+
+
+img_paths = glob.glob('/workspace/Data/solo_train_copy/*/*.tif')
+print(f'Number of images: {len(img_paths)}')
+result_path = "/workspace/byol_results/"
+model_path = "/workspace/model/"+"byol_"+str(exp_name)+".pth"
+print(model_path)
+
+
+
+random.seed(Random_SEED)
+
+
 # # resnet50 = models.resnet50(pretrained=True)
 parser = argparse.ArgumentParser(description='byol-lightning-test')
 
@@ -59,18 +88,6 @@ parser.add_argument('--image_folder', type=str, required = True,
 
 args = parser.parse_args()
 
-# constants
-
-BATCH_SIZE = 96
-EPOCHS     = 25
-LR         = 6e-2
-NUM_GPUS   = 2
-IMAGE_SIZE = 512 # change from 256 to 512
-IMAGE_EXTS = ['.jpg', '.png', '.jpeg','.tif']
-NUM_WORKERS = 2  #multiprocessing.cpu_count
-n_label = 4
-NUM_Clust = 8
-exp_name = "14thApr_1125"
 
 img_paths = glob.glob('/workspace/Data/solo_train_copy/*/*.tif')
 print(f'Number of images: {len(img_paths)}')

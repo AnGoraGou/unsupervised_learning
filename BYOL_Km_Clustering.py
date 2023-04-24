@@ -21,26 +21,36 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ################################ wandb.login()
 
 # test model, a resnet 50
-resnet = models.googlenet(pretrained=True)     #pretrained = false even also resulted 0.2 silhoutte and loss to upto 0.49
+gnet = models.googlenet(pretrained=True)     #pretrained = false even also resulted 0.2 silhoutte and loss to upto 0.49
 
 
-# Freeze all layers except the last one
-# for param in resnet.parameters():
-#     param.requires_grad = False
 
-# # Get the number of input features of the last layer
-# num_ftrs = resnet.fc.in_features
+config = {
+         #"key1": "value1",
+         #"key2": "value2"
 
-# # Create a new fully connected layer with 256 output features
-# new_fc = torch.nn.Linear(num_ftrs, 256)
+         # constants
+         "Random_SEED": 2022,
+         "BATCH_SIZE" : 96,
+         "EPOCHS"     : 25,
+         "LR"         : 8e-3,
+         "NUM_GPUS"   : 2,
+         "IMAGE_SIZE" : 512, # change from 256 to 51
+         "NUM_WORKERS" : 2,  #multiprocessing.cpu_count
+         "n_label" : 4,
+         "NUM_clust" : 8,
+         "exp_name" : "24thApr_1533"
+         }
 
-# # Replace the last layer of the ResNet18 model with the new fully connected layer
-# resnet.fc = new_fc
 
-# # Print the modified ResNet18 model
-# print(resnet)
-# # exit()
-# # Load the ResNet-50 model without the top layer
+#config_path = "/workspace/configuration/"
+#create a json file containing the hyper parameters 
+config_json = os.path.join("/workspace/configuration/", (str(config["exp_name"])+".json"))
+print(config_json)
+with open(config_json, 'w') as f:
+    json.dump(config, f)
+
+
 # # resnet50 = models.resnet50(pretrained=True)
 parser = argparse.ArgumentParser(description='byol-lightning-test')
 
@@ -164,7 +174,7 @@ if __name__ == '__main__':
     print("The data has been loaded to train the model by BYOL method")
 
     model = SelfSupervisedLearner(
-        resnet,
+        gnet,
         image_size = IMAGE_SIZE,
         # hidden_layer = 'avgpool',
         projection_size = 256,  # change 512 from 256
@@ -191,7 +201,7 @@ if __name__ == '__main__':
     
     
     # torch.set_grad_enabled(False)
-    resnet.eval()
+    gnet.eval()
     for img in img_loader:
         #print(img.size())
         output = resnet(img)

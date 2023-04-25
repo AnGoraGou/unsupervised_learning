@@ -1,3 +1,34 @@
+import os
+from pathlib import Path
+from PIL import Image
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import numpy as np
+import torch
+from torchvision import models, transforms
+from torch.utils.data import DataLoader, Dataset
+import glob
+import random
+# import wandb
+import math
+import json              
+from mpl_toolkits.mplot3d import Axes3D
+
+
+# ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+# Define the file path to the saved model
+# model_path = '/workspace/byol_11thApr_1740.pth'
+# gnet = torch.load(model_path, map_location=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"))   # torch.device('cuda')
+# print(model)
+
+img_paths = glob.glob('/workspace/Data/solo_train/*/*.tif')[6]
+print(img_paths)
+
+print(f'Number of images: {(img_paths)}')
+
+
 class ImagesDataset(Dataset):
     def __init__(self, image_size):
         super().__init__()
@@ -48,3 +79,10 @@ if __name__ == '__main__':
       # reshape the tensor to (1024, 1024, 3)
       img = img.reshape(1024, 1024, 3)
       ################################################  print(img.size())  #32 3 512 512
+      img_name = '/workspace/Visualize/V3/'+ 'aug_'+str(count)+'.png'
+      # img = np.transpose(img[0], (1, 2, 0))
+      # plt.imshow(img_rgb)
+      plt.imshow(img)
+      plt.savefig(img_name)
+      count+=1
+
